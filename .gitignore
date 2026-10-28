@@ -1,2 +1,19 @@
 node_modules
 .DS_Store
+
+# Assignment 04 deployment exclusions
+node_modules/
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+.env
+.env.*
+!.env.example
+.venv/
+.azure/
+*.retry
+ansible/secrets/
+ansible/private/
+ansible/**/secret*.yml
+ansible/**/secret*.yaml
