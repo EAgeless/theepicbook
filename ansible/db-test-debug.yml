@@ -1,0 +1,40 @@
+---
+- name: Debug Azure MySQL connection
+  hosts: web
+  become: true
+  gather_facts: false
+
+  vars:
+    mysql_cmd: >-
+      mysql
+      -h {{ db_host }}
+      -u {{ db_user }}
+      --ssl-mode=REQUIRED
+      -D {{ db_name }}
+      -e "SELECT 1;"
+
+  tasks:
+    - name: Show command (no password)
+      ansible.builtin.debug:
+        msg: "Running: {{ mysql_cmd }}"
+
+    - name: Run MySQL test and capture output
+      ansible.builtin.shell:
+        cmd: "{{ mysql_cmd }}"
+      environment:
+        MYSQL_PWD: "{{ db_password }}"
+      register: mysql_result
+      failed_when: false
+      changed_when: false
+
+    - name: Show MySQL stdout
+      ansible.builtin.debug:
+        var: mysql_result.stdout_lines
+
+    - name: Show MySQL stderr
+      ansible.builtin.debug:
+        var: mysql_result.stderr_lines
+
+    - name: Show MySQL return code
+      ansible.builtin.debug:
+        var: mysql_result.rc

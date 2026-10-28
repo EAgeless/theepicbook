@@ -1,0 +1,145 @@
+---
+- name: Install Node.js and npm
+  ansible.builtin.apt:
+    name:
+      - nodejs
+      - npm
+    state: present
+    update_cache: true
+
+- name: Create EpicBook application directory
+  ansible.builtin.file:
+    path: "{{ app_dest }}"
+    state: directory
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+    mode: "0755"
+
+- name: Clone EpicBook repository
+  ansible.builtin.git:
+    repo: "{{ app_repo }}"
+    dest: "{{ app_dest }}"
+    version: main
+    force: true
+  become_user: "{{ app_user }}"
+
+- name: Install EpicBook Node.js dependencies
+  ansible.builtin.command: npm install
+  args:
+    chdir: "{{ app_dest }}"
+  become_user: "{{ app_user }}"
+  changed_when: false
+
+- name: Configure EpicBook database connection
+  ansible.builtin.template:
+    src: config.json.j2
+    dest: "{{ app_dest }}/config/config.json"
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+    mode: "0600"
+
+- name: Fix database name in EpicBook SQL files
+  ansible.builtin.shell:
+    cmd: >-
+      sed -i
+      -e 's/USE bookstore;/USE epicbookdb;/'
+      -e 's/`bookstore`\./`epicbookdb`\./g'
+      "{{ app_dest }}/db/BuyTheBook_Schema.sql"
+      "{{ app_dest }}/db/author_seed.sql"
+      "{{ app_dest }}/db/books_seed.sql"
+  become: true
+
+- name: Import EpicBook database schema
+  ansible.builtin.shell: >
+    mysql -h "{{ db_host }}"
+    -u "{{ db_user }}"
+    --ssl-mode=REQUIRED
+    "{{ db_name }}" < "{{ app_dest }}/db/BuyTheBook_Schema.sql"
+  args:
+    creates: "{{ app_dest }}/.schema_imported"
+  environment:
+    MYSQL_PWD: "{{ db_password }}"
+  no_log: true
+  register: schema_import
+
+- name: Mark EpicBook database schema as imported
+  ansible.builtin.file:
+    path: "{{ app_dest }}/.schema_imported"
+    state: touch
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+  when: schema_import is changed
+
+- name: Import EpicBook author seed data
+  ansible.builtin.shell: >
+    mysql -h "{{ db_host }}"
+    -u "{{ db_user }}"
+    --ssl-mode=REQUIRED
+    "{{ db_name }}" < "{{ app_dest }}/db/author_seed.sql"
+  args:
+    creates: "{{ app_dest }}/.author_seed_imported"
+  environment:
+    MYSQL_PWD: "{{ db_password }}"
+  no_log: true
+  register: author_seed_import
+
+- name: Mark EpicBook author seed data as imported
+  ansible.builtin.file:
+    path: "{{ app_dest }}/.author_seed_imported"
+    state: touch
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+  when: author_seed_import is changed
+
+- name: Import EpicBook books seed data
+  ansible.builtin.shell: >
+    mysql -h "{{ db_host }}"
+    -u "{{ db_user }}"
+    --ssl-mode=REQUIRED
+    "{{ db_name }}" < "{{ app_dest }}/db/books_seed.sql"
+  args:
+    creates: "{{ app_dest }}/.books_seed_imported"
+  environment:
+    MYSQL_PWD: "{{ db_password }}"
+  no_log: true
+  register: books_seed_import
+
+- name: Mark EpicBook books seed data as imported
+  ansible.builtin.file:
+    path: "{{ app_dest }}/.books_seed_imported"
+    state: touch
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+  when: books_seed_import is changed
+
+- name: Install PM2 globally
+  ansible.builtin.command: npm install -g pm2
+  changed_when: false
+
+- name: Check whether EpicBook is already managed by PM2
+  ansible.builtin.command: pm2 describe "{{ pm2_app_name }}"
+  become_user: "{{ app_user }}"
+  register: pm2_app
+  failed_when: false
+  changed_when: false
+
+- name: Start EpicBook with PM2
+  ansible.builtin.command: >
+    pm2 start server.js
+    --name "{{ pm2_app_name }}"
+    --update-env
+  args:
+    chdir: "{{ app_dest }}"
+  environment:
+    PORT: "{{ app_port }}"
+    NODE_ENV: development
+  become_user: "{{ app_user }}"
+  when: pm2_app.rc != 0
+
+- name: Restart EpicBook with PM2
+  ansible.builtin.command: pm2 restart "{{ pm2_app_name }}" --update-env
+  environment:
+    PORT: "{{ app_port }}"
+    NODE_ENV: development
+  become_user: "{{ app_user }}"
+  when: pm2_app.rc == 0

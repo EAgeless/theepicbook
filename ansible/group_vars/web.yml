@@ -1,0 +1,14 @@
+---
+app_repo: "https://github.com/pravinmishraaws/theepicbook.git"
+app_dest: "/opt/epicbook"
+app_user: "azureuser"
+app_port: 8080
+pm2_app_name: "epicbook"
+
+server_name: "4.155.101.32"
+
+db_host: "mysql-epicbook-evangeline-2026.mysql.database.azure.com"
+db_name: "epicbookdb"
+db_user: "mysqladmin"
+
+db_password: "{{ lookup('ansible.builtin.env', 'EPICBOOK_DB_PASSWORD') }}"

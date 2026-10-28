@@ -1,0 +1,19 @@
+---
+- name: Show beginning of SQL schema file
+  hosts: web
+  become: true
+  gather_facts: false
+
+  vars:
+    app_dest: "/opt/epicbook"
+
+  tasks:
+    - name: Show first 15 lines of schema file
+      ansible.builtin.shell:
+        cmd: head -n 15 {{ app_dest }}/db/BuyTheBook_Schema.sql
+      register: sql_head
+      changed_when: false
+
+    - name: Display SQL header
+      ansible.builtin.debug:
+        var: sql_head.stdout_lines

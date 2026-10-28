@@ -1,0 +1,27 @@
+---
+- name: Check database variables on VM
+  hosts: web
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: Show db_host, db_user, db_name
+      ansible.builtin.debug:
+        msg:
+          - "db_host: {{ db_host }}"
+          - "db_user: {{ db_user }}"
+          - "db_name: {{ db_name }}"
+
+    - name: Show length of db_password (not the value)
+      ansible.builtin.debug:
+        msg: "db_password length: {{ db_password | default('', true) | length }}"
+
+    - name: Show MYSQL_PWD from remote env (if set)
+      ansible.builtin.shell:
+        cmd: echo "MYSQL_PWD is ${MYSQL_PWD:+set}${MYSQL_PWD:-:empty}"
+      register: env_check
+      changed_when: false
+
+    - name: Show MYSQL_PWD env result
+      ansible.builtin.debug:
+        var: env_check.stdout_lines

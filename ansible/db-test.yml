@@ -1,0 +1,23 @@
+---
+- name: Test Azure MySQL connection
+  hosts: web
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: Test MySQL connection with TLS
+      ansible.builtin.command:
+        argv:
+          - mysql
+          - -h
+          - "{{ db_host }}"
+          - -u
+          - "{{ db_user }}"
+          - --ssl-mode=REQUIRED
+          - -D
+          - "{{ db_name }}"
+          - -e
+          - SELECT 1;
+      environment:
+        MYSQL_PWD: "{{ db_password }}"
+      no_log: true

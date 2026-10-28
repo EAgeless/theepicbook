@@ -1,0 +1,54 @@
+---
+- name: Debug EpicBook DB schema import
+  hosts: web
+  become: true
+  gather_facts: false
+
+  vars:
+    db_host: "{{ lookup('ansible.builtin.env', 'EPICBOOK_DB_HOST') }}"
+    db_user: "{{ lookup('ansible.builtin.env', 'EPICBOOK_DB_USER') }}"
+    db_name: "{{ lookup('ansible.builtin.env', 'EPICBOOK_DB_NAME') }}"
+    db_password: "{{ lookup('ansible.builtin.env', 'EPICBOOK_DB_PASSWORD') }}"
+    app_dest: "/opt/epicbook"
+
+  tasks:
+    - name: Show SQL file path and DB details
+      ansible.builtin.debug:
+        msg:
+          - "DB: {{ db_name }} on {{ db_host }} as {{ db_user }}"
+          - "SQL file: {{ app_dest }}/db/BuyTheBook_Schema.sql"
+
+    - name: Check SQL file exists
+      ansible.builtin.stat:
+        path: "{{ app_dest }}/db/BuyTheBook_Schema.sql"
+      register: sql_stat
+
+    - name: Show SQL file stat
+      ansible.builtin.debug:
+        var: sql_stat.stat
+
+    - name: Run schema import and capture output
+      ansible.builtin.shell:
+        cmd: >-
+          mysql
+          -h {{ db_host }}
+          -u {{ db_user }}
+          --ssl-mode=REQUIRED
+          {{ db_name }} < {{ app_dest }}/db/BuyTheBook_Schema.sql
+      environment:
+        MYSQL_PWD: "{{ db_password }}"
+      register: import_result
+      failed_when: false
+      changed_when: false
+
+    - name: Show import stdout lines
+      ansible.builtin.debug:
+        var: import_result.stdout_lines
+
+    - name: Show import stderr lines
+      ansible.builtin.debug:
+        var: import_result.stderr_lines
+
+    - name: Show import return code
+      ansible.builtin.debug:
+        var: import_result.rc
