@@ -1,0 +1,46 @@
+trigger:
+  branches:
+    include:
+    - main
+  paths:
+    include:
+    - ansible/*
+    - .azuredevops/*
+    - azure-pipelines.yml
+
+pr: none
+
+variables:
+- group: epicbook-db-secrets
+
+pool:
+  name: SelfHostedPool
+  demands:
+  - Agent.Name -equals vm-epicbook-agent
+
+stages:
+- stage: Lint
+  displayName: Validate Ansible playbook
+  jobs:
+  - job: Lint
+    steps:
+    - checkout: self
+      clean: true
+
+    - template: .azuredevops/ansible-task.yml
+      parameters:
+        action: lint
+
+- stage: Deploy
+  displayName: Deploy EpicBook application
+  dependsOn: Lint
+  jobs:
+  - job: Deploy
+    timeoutInMinutes: 60
+    steps:
+    - checkout: self
+      clean: true
+
+    - template: .azuredevops/ansible-task.yml
+      parameters:
+        action: deploy

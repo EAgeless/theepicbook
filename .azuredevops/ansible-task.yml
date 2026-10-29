@@ -1,0 +1,23 @@
+parameters:
+- name: action
+  type: string
+
+steps:
+- script: |
+    if ! command -v ansible-playbook >/dev/null 2>&1; then
+      sudo apt-get update
+      sudo apt-get install -y ansible
+    fi
+  displayName: 'Ensure Ansible is installed'
+
+- script: |
+    if [ "${{ parameters.action }}" = "lint" ]; then
+      ansible-playbook -i inventory-ci.ini site.yml --syntax-check
+    else
+      export EPICBOOK_DB_PASSWORD="$(MYSQL_ADMIN_PASSWORD)"
+      ansible-playbook -i inventory-ci.ini site.yml
+    fi
+  displayName: 'Ansible: ${{ parameters.action }}'
+  workingDirectory: $(Build.SourcesDirectory)/ansible
+  env:
+    EPICBOOK_DB_PASSWORD: $(MYSQL_ADMIN_PASSWORD)
