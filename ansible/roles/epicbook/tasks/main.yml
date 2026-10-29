@@ -59,7 +59,6 @@
     creates: "{{ app_dest }}/.schema_imported"
   environment:
     MYSQL_PWD: "{{ db_password }}"
-  no_log: true
   register: schema_import
 
 - name: Mark EpicBook database schema as imported
