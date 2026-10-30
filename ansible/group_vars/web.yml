@@ -9,6 +9,6 @@ server_name: "4.155.101.32"
 
 db_host: "mysql-epicbook-c68b52c999f7.mysql.database.azure.com"
 db_name: "epicbookdb"
-db_user: "mysqladmin"
+db_user: "epicbookadmin"
 
 db_password: "{{ lookup('ansible.builtin.env', 'EPICBOOK_DB_PASSWORD') }}"
